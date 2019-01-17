@@ -1,0 +1,161 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'container cluster on ECS, loadbalancer, security groups'
+
+Resources:
+    VPC:
+      Type: 'AWS::EC2::VPC'
+      Properties:
+        CidrBlock: 10.0.0.0/16
+        EnableDnsSupport: true
+        EnableDnsHostnames: true
+        InstanceTenancy: default
+    InternetGateway:
+      Type: 'AWS::EC2::InternetGateway'
+
+    InternetGatewayAttachment:
+      Type: 'AWS::EC2::VPCGatewayAttachment'
+      Properties:
+        InternetGatewayId: !Ref InternetGateway
+        VpcId: !Ref VPC
+    
+    CloudSolutionPublic1a:
+      Type: 'AWS::EC2::Subnet'
+      Properties:
+        VpcId: !Ref VPC
+        AvailabilityZone: us-west-1a
+        CidrBlock: !Sub 10.0.1.0/24
+        MapPublicIpOnLaunch: true
+
+    CloudSolutionPrivate1b:
+      Type: 'AWS::EC2::Subnet'
+      Properties:
+        VpcId: !Ref VPC
+        AvailabilityZone: us-west-1a
+        CidrBlock: !Sub 10.0.2.0/24
+        MapPublicIpOnLaunch: false
+
+    CloudSolutionPublic2a:
+      Type: 'AWS::EC2::Subnet'
+      Properties:
+        VpcId: !Ref VPC
+        AvailabilityZone: us-west-1b
+        CidrBlock: !Sub 10.0.3.0/24
+        MapPublicIpOnLaunch: true
+
+    CloudSolutionPrivate2b:
+      Type: 'AWS::EC2::Subnet'
+      Properties:
+        VpcId: !Ref VPC
+        AvailabilityZone: us-west-1b
+        CidrBlock: !Sub 10.0.4.0/24
+        MapPublicIpOnLaunch: false
+    
+    NatGateway1EIP:
+        Type: 'AWS::EC2::EIP'
+        DependsOn: InternetGatewayAttachment
+        Properties:
+          Domain: VPC
+    
+    NatGateway2EIP:
+        Type: 'AWS::EC2::EIP'
+        DependsOn: InternetGatewayAttachment
+        Properties:
+          Domain: VPC
+
+    NatGateway1:
+        Type: 'AWS::EC2::NatGateway'
+        Properties:
+          AllocationId: !GetAtt NatGateway1EIP.AllocationId
+          SubnetId: !Ref CloudSolutionPublic1a
+
+    NatGateway2:
+        Type: 'AWS::EC2::NatGateway'
+        Properties:
+            AllocationId: !GetAtt NatGateway2EIP.AllocationId
+            SubnetId: !Ref CloudSolutionPublic2a
+
+    PublicRouteTable:
+        Type: 'AWS::EC2::RouteTable'
+        Properties:
+            VpcId: !Ref VPC
+
+    DefaultPublicRoute:
+        Type: 'AWS::EC2::Route'
+        DependsOn: InternetGatewayAttachment
+        Properties:
+            RouteTableId: !Ref PublicRouteTable
+            DestinationCidrBlock: 0.0.0.0/0
+            GatewayId: !Ref InternetGateway
+    
+    PrivateRouteTable1:
+        Type: 'AWS::EC2::RouteTable'
+        Properties:
+            VpcId: !Ref VPC
+    
+    PrivateRouteTable2:
+        Type: 'AWS::EC2::RouteTable'
+        Properties:
+            VpcId: !Ref VPC
+
+    DefaultPrivateRoute1:
+        Type: 'AWS::EC2::Route'
+        Properties:
+            RouteTableId: !Ref PrivateRouteTable1
+            DestinationCidrBlock: 0.0.0.0/0
+            NatGatewayId: !Ref NatGateway1
+
+    DefaultPrivateRoute2:
+        Type: 'AWS::EC2::Route'
+        Properties:
+            RouteTableId: !Ref PrivateRouteTable2
+            DestinationCidrBlock: 0.0.0.0/0
+            NatGatewayId: !Ref NatGateway2
+    
+    PublicSubnet1RouteTableAssociation:
+        Type: 'AWS::EC2::SubnetRouteTableAssociation'
+        Properties:
+            RouteTableId: !Ref PublicRouteTable
+            SubnetId: !Ref CloudSolutionPublic1a
+
+    PublicSubnet2RouteTableAssociation:
+        Type: 'AWS::EC2::SubnetRouteTableAssociation'
+        Properties:
+            RouteTableId: !Ref PublicRouteTable
+            SubnetId: !Ref CloudSolutionPublic2a
+
+    PrivateSubnet1RouteTableAssociation:
+        Type: 'AWS::EC2::SubnetRouteTableAssociation'
+        Properties:
+            RouteTableId: !Ref PrivateRouteTable1
+            SubnetId: !Ref CloudSolutionPrivate1b
+
+    PrivateSubnet2RouteTableAssociation:
+        Type: 'AWS::EC2::SubnetRouteTableAssociation'
+        Properties:
+            RouteTableId: !Ref PrivateRouteTable2
+            SubnetId: !Ref CloudSolutionPrivate2b
+
+Outputs:
+    VPC:
+        Description: A reference to the created VPC
+        Value: !Ref VPC
+    PublicSubnets:
+        Description: A list of the public subnets
+        Value: !Join [ ",", [ !Ref CloudSolutionPublic1a, !Ref CloudSolutionPublic2a ]]
+
+    PrivateSubnets:
+        Description: A list of the private subnets
+        Value: !Join [ ",", [ !Ref CloudSolutionPrivate1b, !Ref CloudSolutionPrivate2b ]]
+
+    CloudSolutionPublic1a:
+        Description: A reference to the public subnet in the 1st Availability Zone
+        Value: !Ref CloudSolutionPublic1a
+    CloudSolutionPublic2a:
+        Description: A reference to the public subnet in the 2nd Availability Zone
+        Value: !Ref CloudSolutionPublic2a
+    CloudSolutionPrivate1b:
+        Description: A reference to the private subnet in the 1st Availability Zone
+        Value: !Ref CloudSolutionPrivate1b
+    CloudSolutionPrivate2b:
+        Description: A reference to the private subnet in the 2nd Availability Zone
+        Value: !Ref CloudSolutionPrivate1b
