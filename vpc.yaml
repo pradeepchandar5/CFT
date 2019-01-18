@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: 'container cluster on ECS, loadbalancer, security groups'
+Description: 'container cluster on ECS, loadbalancer
 
 Resources:
     VPC:
