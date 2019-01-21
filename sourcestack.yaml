@@ -1,0 +1,13 @@
+- Name: S3Source
+  Actions:
+    - Name: TemplateSource
+      ActionTypeId:
+        Category: Source
+        Owner: AWS
+        Provider: S3
+        Version: '1'
+      Configuration:
+        S3Bucket: !Ref 'S3Bucket'
+        S3ObjectKey: !Ref 'SourceS3Key'
+      OutputArtifacts:
+        - Name: TemplateSource
