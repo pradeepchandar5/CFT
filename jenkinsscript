@@ -1,0 +1,137 @@
+#!/bin/bash
+which bash
+export PATH="$PATH:/usr/local/bin"
+which jq
+
+
+#!/bin/bash
+
+REGION=us-west-1
+REPOSITORY_NAME=wm-api-product
+CLUSTER=SolDevCluster
+FAMILY=apiproduct
+NAME=`sed -n 's/.*"name": "\(.*\)",/\1/p' taskdef.json`
+SERVICE_NAME=${FAMILY}
+
+#Store the repositoryUri as a variable
+REPOSITORY_URI=`aws ecr describe-repositories --repository-names ${REPOSITORY_NAME} --region ${REGION} | /usr/local/bin/jq .repositories[].repositoryUri | tr -d '"'`
+
+#Replace the build number and respository URI placeholders with the constants above
+sed -e "s;%BUILD_NUMBER%;${BUILD_NUMBER};g" -e "s;%REPOSITORY_URI%;${REPOSITORY_URI};g" taskdef.json > ${NAME}-v_${BUILD_NUMBER}.json
+#Register the task definition in the repository
+aws ecs register-task-definition --family ${FAMILY} --cli-input-json file://${WORKSPACE}/${NAME}-v_${BUILD_NUMBER}.json --region ${REGION}
+SERVICES=`aws ecs describe-services --services ${SERVICE_NAME} --cluster ${CLUSTER} --region ${REGION} | /usr/local/bin/jq .failures[]`
+#Get latest revision
+REVISION=`aws ecs describe-task-definition --task-definition ${FAMILY} --region ${REGION} | /usr/local/bin/jq .taskDefinition.revision`
+
+#Create or update service
+if [ "$SERVICES" == "" ]; then
+  echo "entered existing service"
+  DESIRED_COUNT=`aws ecs describe-services --services ${SERVICE_NAME} --cluster ${CLUSTER} --region ${REGION} | /usr/local/bin/jq .services[].desiredCount`
+  if [ ${DESIRED_COUNT} = "0" ]; then
+    DESIRED_COUNT="1"
+  fi
+  aws ecs update-service --cluster ${CLUSTER} --region ${REGION} --service ${SERVICE_NAME} --task-definition ${FAMILY}:${REVISION} --desired-count ${DESIRED_COUNT}
+else
+  echo "entered new service"
+  aws ecs create-service --service-name ${SERVICE_NAME} --desired-count 1 --task-definition ${FAMILY} --cluster ${CLUSTER} --region ${REGION}
+fi
+
+
+
+stage('Sonar') {
+            steps {
+                echo 'Sonar Scanner'
+               	//def scannerHome = tool 'SonarQube Scanner 3.0'
+			    withSonarQubeEnv('sonarqube') {
+			   // 	bat 'C:/Dock/ci/sonar/sonar-scanner-3.0.3.778-windows/bin/sonar-scanner'
+			  //  sh 'mvn clean sonarscanner '
+			    sh 'mvn "org.sonarsource.scanner.maven:sonar-maven-plugin:3.2:sonar" '
+			    }
+            }
+        }
+        
+        stage('Package') {
+            steps {
+                echo 'Packaging'
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+        
+        stage('Deploy to ECR') {
+            steps {
+                script {
+                 docker.build('wm-api-product')
+                
+                 docker.withRegistry('https://666303174975.dkr.ecr.us-west-1.amazonaws.com', 'ecr:us-west-1:AWS_credentials') 
+                 {
+                 docker.image('wm-api-product').push('v_$BUILD_NUMBER')
+                 docker.image('wm-api-product').push('latest')
+                 }
+                 
+                }
+            }
+        }    
+                 
+        stage('Docker Image Scan') {
+            steps {
+                sh 'echo "666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-product:latest ${WORKSPACE}/Dockerfile" > anchore_images'
+                anchore name: 'anchore_images'
+            }
+        }
+        
+        stage('Cleanup') {
+            // Delete the docker image and clean up any allotted resources
+         steps {
+                    sh script: "docker rmi " + "666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-product:latest"
+                    sh script: "docker rmi " + "666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-product:v_$BUILD_NUMBER"
+                    sh script: "docker rmi " + "wm-api-product:latest"
+                    
+            }
+        }
+        
+        
+        
+        
+
+
+
+
+
+#!/bin/bash +x
+set -e
+
+# Remove unnecessary files
+echo -e "\033[34mRemoving unnecessary files...\033[0m"
+rm -f log/*.log &> /dev/null || true &> /dev/null
+rm -rf public/uploads/* &> /dev/null || true &> /dev/null
+
+# Build Project
+echo -e "\033[34mBuilding Project...\033[0m"
+docker-compose --project-name=${JOB_NAME} build
+
+# Prepare test database
+COMMAND="bundle exec rake db:drop db:create db:migrate"
+echo -e "\033[34mRunning: $COMMAND\033[0m"
+docker-compose --project-name=${JOB_NAME} run  \
+        -e RAILS_ENV=test web $COMMAND
+
+# Run tests
+COMMAND="bundle exec rspec spec"
+echo -e "\033[34mRunning: $COMMAND\033[0m"
+unbuffer docker-compose --project-name=${JOB_NAME} run web $COMMAND
+
+# Run rubocop lint
+COMMAND="bundle exec rubocop app spec -R --format simple"
+echo -e "\033[34mRunning: $COMMAND\033[0m"
+unbuffer docker-compose --project-name=${JOB_NAME} run -e RUBYOPT="-Ku" web $COMMAND
+
+
+
+#!/bin/bash +x
+docker-compose --project-name=${JOB_NAME} stop &> /dev/null || true &> /dev/null
+docker-compose --project-name=${JOB_NAME} rm --force &> /dev/null || true &> /dev/null
+docker stop `docker ps -a -q -f status=exited` &> /dev/null || true &> /dev/null
+docker rm -v `docker ps -a -q -f status=exited` &> /dev/null || true &> /dev/null
+docker rmi `docker images --filter 'dangling=true' -q --no-trunc` &> /dev/null || true &> /dev/null
+
