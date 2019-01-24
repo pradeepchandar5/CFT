@@ -329,7 +329,7 @@ Resources:
               - 'ecr:BatchGetImage'
               - 'ecr:GetDownloadUrlForLayer'
             Resource: '*'
-
+  
   PublicLoadBalancerSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -338,7 +338,14 @@ Resources:
       SecurityGroupIngress:
           - CidrIp: 0.0.0.0/0
             IpProtocol: -1
-  PublicLoadBalancer:
+  PrivateLoadBalancerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the internal load balancer
+      VpcId: !Ref 'VPC'
+
+  
+PublicLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Scheme: internet-facing
