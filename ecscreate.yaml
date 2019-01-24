@@ -170,7 +170,6 @@ Resources:
       Cpu: !Ref 'ContainerCpu'
       Memory: !Ref 'ContainerMemory'
       NetworkMode: awsvpc
-      TaskRoleArn: !Ref 'AWS::NoValue'
       RequiresCompatibilities:
         - FARGATE
       ContainerDefinitions:
@@ -180,6 +179,7 @@ Resources:
           Image: !Ref 'ImageUrl'
           PortMappings:
             - ContainerPort: !Ref 'ContainerPort'
+            - hostPort: 8085
 
   Service:
     Type: AWS::ECS::Service
