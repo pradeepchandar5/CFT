@@ -330,36 +330,6 @@ Resources:
               - 'ecr:GetDownloadUrlForLayer'
             Resource: '*'
 
-  ECSRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service: [ecs.amazonaws.com]
-          Action: ['sts:AssumeRole']
-      Path: /
-      Policies:
-      - PolicyName: ecs-service
-        PolicyDocument:
-          Statement:
-          - Effect: Allow
-            Action:
-              - 'ec2:AttachNetworkInterface'
-              - 'ec2:CreateNetworkInterface'
-              - 'ec2:CreateNetworkInterfacePermission'
-              - 'ec2:DeleteNetworkInterface'
-              - 'ec2:DeleteNetworkInterfacePermission'
-              - 'ec2:Describe*'
-              - 'ec2:DetachNetworkInterface'
-              - 'elasticloadbalancing:DeregisterInstancesFromLoadBalancer'
-              - 'elasticloadbalancing:DeregisterTargets'
-              - 'elasticloadbalancing:Describe*'
-              - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
-              - 'elasticloadbalancing:RegisterTargets'
-            Resource: '*'
-
   PublicLoadBalancerSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -403,12 +373,6 @@ Resources:
       LoadBalancerArn: !Ref 'PublicLoadBalancer'
       Port: 80
       Protocol: HTTP
-
-  PrivateLoadBalancerSG:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Access to the internal load balancer
-      VpcId: !Ref 'VPC'
   PrivateLoadBalancerIngressFromECS:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -489,8 +453,6 @@ Resources:
       Cpu: !Ref 'ContainerCpu'
       Memory: !Ref 'ContainerMemory'
       NetworkMode: awsvpc
-      RequiresCompatibilities:
-        - FARGATE
       ContainerDefinitions:
         - Name: !Ref 'ServiceName'
           Cpu: !Ref 'ContainerCpu'
@@ -498,23 +460,6 @@ Resources:
           Image: !Ref 'ImageUrl'
           PortMappings:
             - ContainerPort: !Ref 'ContainerPort'
-
-  Service:
-    Type: AWS::ECS::Service
-    DependsOn: LoadBalancerRule
-    Properties:
-      ServiceName: !Ref 'ServiceName'
-      Cluster: !Ref 'ClusterName'
-      DeploymentConfiguration:
-        MaximumPercent: 200
-        MinimumHealthyPercent: 75
-      DesiredCount: !Ref 'DesiredCount'
-      TaskDefinition: !Ref 'TaskDefinition'
-      LoadBalancers:
-        - ContainerName: !Ref 'ServiceName'
-          ContainerPort: !Ref 'ContainerPort'
-          TargetGroupArn: !Ref 'TargetGroup'
-
 
   Service:
     Type: AWS::ECS::Service
@@ -532,22 +477,6 @@ Resources:
       TaskDefinition: !Ref 'TaskDefinition'
       ServiceRegistries:
         - RegistryArn: !GetAtt ServiceDiscoveryService.Arn
-  Service:
-    Type: AWS::ECS::Service
-    DependsOn: LoadBalancerRule
-    Properties:
-      ServiceName: !Ref 'ServiceName'
-      Cluster: !Ref 'ClusterName'
-      DeploymentConfiguration:
-        MaximumPercent: 200
-        MinimumHealthyPercent: 75
-      DesiredCount: !Ref 'DesiredCount'
-      TaskDefinition: !Ref 'TaskDefinition'
-      LoadBalancers:
-        - ContainerName: !Ref 'ServiceName'
-          ContainerPort: !Ref 'ContainerPort'
-          TargetGroupArn: !Ref 'TargetGroup'        
-
   ServiceDiscoveryService:
     Type: AWS::ServiceDiscovery::Service
     Properties:
