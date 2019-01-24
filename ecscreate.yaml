@@ -33,13 +33,13 @@ Parameters:
     Default: "666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-test:latest"
   ContainerPort:
     Type: Number
-    Default: 8080
+    Default: 8085
   ContainerCpu:
     Type: Number
     Default: 256
   ContainerMemory:
     Type: Number
-    Default: 512
+    Default: 256
   DesiredCount:
     Type: Number
     Default: 1
@@ -140,6 +140,26 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTableTwo
       SubnetId: !Ref PrivateSubnetTwo
+  NatGatewayOneAttachment:
+    Type: AWS::EC2::EIP
+    DependsOn: GatewayAttachement
+    Properties:
+        Domain: vpc
+  NatGatewayTwoAttachment:
+    Type: AWS::EC2::EIP
+    DependsOn: GatewayAttachement
+    Properties:
+        Domain: vpc
+  NatGatewayOne:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayOneAttachment.AllocationId
+      SubnetId: !Ref PublicSubnetOne
+  NatGatewayTwo:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayTwoAttachment.AllocationId
+      SubnetId: !Ref PublicSubnetTwo
   ECSCluster:
     Type: AWS::ECS::Cluster
     Properties:
