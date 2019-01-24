@@ -39,7 +39,7 @@ Parameters:
     Default: 10
   ContainerMemory:
     Type: Number
-    Default: 128
+    Default: 256
   DesiredCount:
     Type: Number
     Default: 1
