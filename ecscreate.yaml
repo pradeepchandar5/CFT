@@ -30,7 +30,7 @@ Parameters:
     Default: apitest
   ImageUrl:
     Type: String
-    Default: "%REPOSITORY_URI%:v_%BUILD_NUMBER%"
+    Default: "666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-test:latest"
   ContainerPort:
     Type: Number
     Default: 8080
@@ -151,11 +151,7 @@ Resources:
       Cpu: !Ref 'ContainerCpu'
       Memory: !Ref 'ContainerMemory'
       NetworkMode: awsvpc
-      TaskRoleArn:
-        Fn::If:
-          - 'HasCustomRole'
-          - !Ref 'Role'
-          - !Ref "AWS::NoValue"
+      TaskRoleArn: !Ref 'AWS::NoValue'
       RequiresCompatibilities:
         - FARGATE
       ExecutionRoleArn: !Ref ECSTaskExecutionRole
