@@ -1,5 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Deploy autoscaled service cluster on Fargate, hosted in private subnet accessible via a public load balancer
+Description: ECS cluster in vpc
+
 Mappings:
   SubnetConfig:
     VPC:
@@ -14,22 +15,22 @@ Mappings:
       CIDR: '10.0.4.0/24'
 
 Parameters:
-  KeyName:
-    Type: String
-    Description: >
-    Default: ''
   EnvironmentName:
     Type: String
     Default: staging
-    Description: The name of the environment to add this service to
   ServiceName:
     Type: String
-    Default: testservice
-    Description: A name for the service
+    Default: apitest
+  Domain:
+    Type: String
+    Default: service.production
+    Description: The name of the namespace. Services are prepended, for example user.service.production
+  ClusterName:
+    Type: String
+    Default: apitest
   ImageUrl:
     Type: String
-    Default: 666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-test:latest
-    Description: The url of a docker image
+    Default: "%REPOSITORY_URI%:v_%BUILD_NUMBER%"
   ContainerPort:
     Type: Number
     Default: 8080
@@ -38,25 +39,19 @@ Parameters:
     Default: 10
   ContainerMemory:
     Type: Number
-    Default: 256
-  Path:
-    Type: String
-    Default: "*"
-    Description: all load balancer traffic to this service.
-  Priority:
-    Type: Number
-    Default: 1
+    Default: 128
   DesiredCount:
     Type: Number
     Default: 1
-    Description: How many copies of the service task to run
-
+  Role:
+    Type: String
+    Default: ""
 
 Resources:
   LogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub ${EnvironmentName}-service-${ServiceName}
+      LogGroupName: apitestlog
   VPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -117,26 +112,6 @@ Resources:
     Properties:
       SubnetId: !Ref PublicSubnetTwo
       RouteTableId: !Ref PublicRouteTable
-  NatGatewayOneAttachment:
-    Type: AWS::EC2::EIP
-    DependsOn: GatewayAttachement
-    Properties:
-        Domain: vpc
-  NatGatewayTwoAttachment:
-    Type: AWS::EC2::EIP
-    DependsOn: GatewayAttachement
-    Properties:
-        Domain: vpc
-  NatGatewayOne:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatGatewayOneAttachment.AllocationId
-      SubnetId: !Ref PublicSubnetOne
-  NatGatewayTwo:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatGatewayTwoAttachment.AllocationId
-      SubnetId: !Ref PublicSubnetTwo
   PrivateRouteTableOne:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -146,7 +121,6 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTableOne
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGatewayOne
   PrivateRouteTableOneAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -161,7 +135,6 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTableTwo
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGatewayTwo
   PrivateRouteTableTwoAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -170,7 +143,7 @@ Resources:
   ECSCluster:
     Type: AWS::ECS::Cluster
     Properties:
-      ClusterName: 'apitest101' 
+      ClusterName: !Ref ClusterName 
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
@@ -178,6 +151,11 @@ Resources:
       Cpu: !Ref 'ContainerCpu'
       Memory: !Ref 'ContainerMemory'
       NetworkMode: awsvpc
+      TaskRoleArn:
+        Fn::If:
+          - 'HasCustomRole'
+          - !Ref 'Role'
+          - !Ref "AWS::NoValue"
       RequiresCompatibilities:
         - FARGATE
       ExecutionRoleArn: !Ref ECSTaskExecutionRole
@@ -191,10 +169,9 @@ Resources:
           LogConfiguration:
             LogDriver: 'awslogs'
             Options:
-              awslogs-group: !Sub ${EnvironmentName}-service-${ServiceName}
-              awslogs-region: !Ref 'AWS::Region'
-              awslogs-stream-prefix: !Ref 'ServiceName'
-
+              awslogs-group: !Ref ServiceName
+              awslogs-region: us-west-1
+              awslogs-stream-prefix: apitestlog
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -216,12 +193,10 @@ Resources:
                 - 'ecr:BatchCheckLayerAvailability'
                 - 'ecr:GetDownloadUrlForLayer'
                 - 'ecr:BatchGetImage'
-
                 # Allow the ECS tasks to upload logs to CloudWatch
-                - 'logs:CreateLogStream'
-                - 'logs:PutLogEvents'
+                #- 'logs:CreateLogStream'
+                #- 'logs:PutLogEvents'
               Resource: '*'
-
   ECSRole:
     Type: AWS::IAM::Role
     Properties:
@@ -247,139 +222,49 @@ Resources:
               - 'ec2:DeleteNetworkInterfacePermission'
               - 'ec2:Describe*'
               - 'ec2:DetachNetworkInterface'
-
-  
+            Resource: '*'
   Service:
     Type: AWS::ECS::Service
-    DependsOn: LoadBalancerRule
     Properties:
       ServiceName: !Ref 'ServiceName'
-      TaskDefinition: !Ref TaskDefinition
-      Cluster: !Ref ECSCluster
+      Cluster: !Ref 'ClusterName'
       LaunchType: FARGATE
-      DesiredCount: 2
       DeploymentConfiguration:
         MaximumPercent: 200
-        MinimumHealthyPercent: 70
+        MinimumHealthyPercent: 75
+      DesiredCount: !Ref 'DesiredCount'
       NetworkConfiguration:
         AwsvpcConfiguration:
+          SecurityGroups: !Ref ContainerSecurityGroup
           Subnets:
             - !Ref PrivateSubnetOne
             - !Ref PrivateSubnetTwo
-          SecurityGroups: ContainerSecurityGroup
-      LoadBalancers:
-        - ContainerName: !Ref 'ServiceName'
-          ContainerPort: !Ref 'ContainerPort'
-          TargetGroupArn: !Ref 'TargetGroup'
-  TargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+      TaskDefinition: !Ref 'TaskDefinition'
+      ServiceRegistries:
+        - RegistryArn: !GetAtt ServiceDiscoveryService.Arn
+  ServiceDiscoveryService:
+    Type: AWS::ServiceDiscovery::Service
     Properties:
-      HealthCheckIntervalSeconds: 6
-      HealthCheckPath: /
-      HealthCheckProtocol: HTTP
-      HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 2
-      TargetType: ip
-      Name: !Ref 'ServiceName'
-      Port: !Ref 'ContainerPort'
-      Protocol: HTTP
-      UnhealthyThresholdCount: 2
-      VpcId: !Ref 'VPC'
-  LoadBalancerRule:
-    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+      Name: !Ref ServiceName
+      DnsConfig:
+        DnsRecords: [{Type: A, TTL: "10"}]
+        NamespaceId: !Ref ServiceDiscoveryNamespace
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+  ServiceDiscoveryNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
     Properties:
-      Actions:
-        - TargetGroupArn: !Ref 'TargetGroup'
-          Type: 'forward'
-      Conditions:
-        - Field: path-pattern
-          Values: [!Ref 'Path']
-      ListenerArn: !Sub ${EnvironmentName}:PublicListener
-      Priority: !Ref 'Priority'
-  EcsSecurityGroupIngressFromPublicALB:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      Description: Ingress from the public ALB
-      GroupId: !Ref ContainerSecurityGroup
-      IpProtocol: -1
-      SourceSecurityGroupId: !Ref 'PublicLoadBalancerSG'
-  EcsSecurityGroupIngressFromPrivateALB:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      Description: Ingress from the private ALB
-      GroupId: !Ref ContainerSecurityGroup
-      IpProtocol: -1
-      SourceSecurityGroupId: !Ref 'PrivateLoadBalancerSG'
-  PublicLoadBalancerSG:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Access to the public facing load balancer
-      VpcId: !Ref 'VPC'
-      SecurityGroupIngress:
-          # Allow access to ALB from anywhere on the internet
-          - CidrIp: 0.0.0.0/0
-            IpProtocol: -1
-  PublicLoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      Scheme: internet-facing
-      LoadBalancerAttributes:
-      - Key: idle_timeout.timeout_seconds
-        Value: '30'
-      Subnets:
-        - !Ref PublicSubnetOne
-        - !Ref PublicSubnetTwo
-      SecurityGroups: [!Ref 'PublicLoadBalancerSG']
-  DummyTargetGroupPublic:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      HealthCheckIntervalSeconds: 6
-      HealthCheckPath: /
-      HealthCheckProtocol: HTTP
-      HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 2
-      Port: 80
-      Protocol: HTTP
-      UnhealthyThresholdCount: 2
-      VpcId: !Ref 'VPC'
-  PublicLoadBalancerListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    DependsOn:
-      - PublicLoadBalancer
-    Properties:
-      DefaultActions:
-        - TargetGroupArn: !Ref 'DummyTargetGroupPublic'
-          Type: 'forward'
-      LoadBalancerArn: !Ref 'PublicLoadBalancer'
-      Port: 80
-      Protocol: HTTP
-  PrivateLoadBalancerSG:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Access to the internal load balancer
-      VpcId: !Ref 'VPC'
-  PrivateLoadBalancerIngressFromECS:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      Description: Only accept traffic from a container in the fargate container security group
-      GroupId: !Ref 'PrivateLoadBalancerSG'
-      IpProtocol: -1
-      SourceSecurityGroupId: !Ref ContainerSecurityGroup
-  PrivateLoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      Scheme: internal
-      LoadBalancerAttributes:
-      - Key: idle_timeout.timeout_seconds
-        Value: '30'
-      Subnets:
-        # This load balancer is put into the private subnet, so that there is no
-        # route for the public to even be able to access the private load balancer.
-        - !Ref PrivateSubnetOne
-        - !Ref PrivateSubnetTwo
-      SecurityGroups: [!Ref 'PrivateLoadBalancerSG']
+      Name: !Ref Domain
+      Vpc: !Ref VPC
   ContainerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Access to the ECS hosts that run containers
       VpcId: !Ref 'VPC'
+  EcsSecurityGroupIngressFromSelf:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from other containers in the cluster
+      GroupId: !Ref ContainerSecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref ContainerSecurityGroup
