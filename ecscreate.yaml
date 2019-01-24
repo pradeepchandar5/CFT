@@ -36,7 +36,7 @@ Parameters:
     Default: 8080
   ContainerCpu:
     Type: Number
-    Default: 10
+    Default: 256
   ContainerMemory:
     Type: Number
     Default: 256
