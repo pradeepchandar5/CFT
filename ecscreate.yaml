@@ -51,10 +51,6 @@ Parameters:
     Default: ""
 
 Resources:
-  LogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: apitestlog
   VPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -184,12 +180,6 @@ Resources:
           Image: !Ref 'ImageUrl'
           PortMappings:
             - ContainerPort: !Ref 'ContainerPort'
-          LogConfiguration:
-            LogDriver: 'awslogs'
-            Options:
-              awslogs-group: !Ref ServiceName
-              awslogs-region: us-west-1
-              awslogs-stream-prefix: apitestlog
 
   Service:
     Type: AWS::ECS::Service
