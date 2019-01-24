@@ -56,11 +56,6 @@ Parameters:
   Role:
     Type: String
     Default: ""
-  EcsAmiId:
-    Type: String
-    Description: Specifies the AMI ID for your container instances.
-  IamRoleInstanceProfile:
-    Type: String
   InstanceType:
     Description: EC2 instance type
     Type: String
