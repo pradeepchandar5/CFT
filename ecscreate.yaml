@@ -14,6 +14,9 @@ Mappings:
     PrivateTwo:
       CIDR: '10.0.4.0/24'
 
+Conditions:
+  HasCustomRole: !Not [ !Equals [!Ref 'Role', ''] ]
+
 Parameters:
   EnvironmentName:
     Type: String
@@ -190,10 +193,30 @@ Resources:
               awslogs-stream-prefix: apitestlog
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: AmazonECSTaskExecutionRolePolicy
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                # Allow the ECS Tasks to download images from ECR
+                - 'ecr:GetAuthorizationToken'
+                - 'ecr:BatchCheckLayerAvailability'
+                - 'ecr:GetDownloadUrlForLayer'
+                - 'ecr:BatchGetImage'
 
-  ECSRole:
-    Type: AWS::IAM::Role
-    
+                # Allow the ECS tasks to upload logs to CloudWatch
+                - 'logs:CreateLogStream'
+                - 'logs:PutLogEvents'
+              Resource: '*'
   Service:
     Type: AWS::ECS::Service
     Properties:
