@@ -329,20 +329,13 @@ Resources:
               - 'ecr:BatchGetImage'
               - 'ecr:GetDownloadUrlForLayer'
             Resource: '*'
-  
   PublicLoadBalancerSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Access to the public facing load balancer
       VpcId: !Ref 'VPC'
       SecurityGroupIngress:
           - CidrIp: 0.0.0.0/0
             IpProtocol: -1
-  PrivateLoadBalancerSG:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Access to the internal load balancer
-      VpcId: !Ref 'VPC'  
   PublicLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -354,19 +347,6 @@ Resources:
         - !Ref PublicSubnetOne
         - !Ref PublicSubnetTwo
       SecurityGroups: [!Ref 'PublicLoadBalancerSG']
-  DummyTargetGroupPublic:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      HealthCheckIntervalSeconds: 6
-      HealthCheckPath: /
-      HealthCheckProtocol: HTTP
-      HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 2
-      Name: !Join ['-', [!Ref 'AWS::StackName', 'drop-1']]
-      Port: 80
-      Protocol: HTTP
-      UnhealthyThresholdCount: 2
-      VpcId: !Ref 'VPC'
   PublicLoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     DependsOn:
@@ -378,13 +358,6 @@ Resources:
       LoadBalancerArn: !Ref 'PublicLoadBalancer'
       Port: 80
       Protocol: HTTP
-  PrivateLoadBalancerIngressFromECS:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      Description: Only accept traffic from a container in the container host security group
-      GroupId: !Ref 'PrivateLoadBalancerSG'
-      IpProtocol: -1
-      SourceSecurityGroupId: !Ref 'EcsHostSecurityGroup'
   PrivateLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -396,6 +369,30 @@ Resources:
         - !Ref PrivateSubnetOne
         - !Ref PrivateSubnetTwo
       SecurityGroups: [!Ref 'PrivateLoadBalancerSG']
+  PrivateLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn:
+      - PrivateLoadBalancer
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref 'DummyTargetGroupPrivate'
+          Type: 'forward'
+      LoadBalancerArn: !Ref 'PrivateLoadBalancer'
+      Port: 80
+      Protocol: HTTP
+  PrivateLoadBalancerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the internal load balancer
+      VpcId: !Ref 'VPC'
+
+  PrivateLoadBalancerIngressFromECS:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Only accept traffic from a container in the container host security group
+      GroupId: !Ref 'PrivateLoadBalancerSG'
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref 'EcsHostSecurityGroup'
   DummyTargetGroupPrivate:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
@@ -409,17 +406,19 @@ Resources:
       Protocol: HTTP
       UnhealthyThresholdCount: 2
       VpcId: !Ref 'VPC'
-  PrivateLoadBalancerListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    DependsOn:
-      - PrivateLoadBalancer
+  DummyTargetGroupPublic:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      DefaultActions:
-        - TargetGroupArn: !Ref 'DummyTargetGroupPrivate'
-          Type: 'forward'
-      LoadBalancerArn: !Ref 'PrivateLoadBalancer'
+      HealthCheckIntervalSeconds: 6
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      Name: !Join ['-', [!Ref 'AWS::StackName', 'drop-1']]
       Port: 80
       Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref 'VPC'
 
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
