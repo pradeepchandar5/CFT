@@ -5,14 +5,15 @@ Mappings:
   SubnetConfig:
     VPC:
       CIDR: '10.0.0.0/16'
+      VpcId: 'vpc-011b05059b8a16fe8'
     PublicOne:
-      CIDR: '10.0.4.0/24'
+      CIDR: '10.0.1.0/24'
     PublicTwo:
-      CIDR: '10.0.5.0/24'
+      CIDR: '10.0.3.0/24'
     PrivateOne:
-      CIDR: '10.0.6.0/24'
+      CIDR: '10.0.2.0/24'
     PrivateTwo:
-      CIDR: '10.0.7.0/24'
+      CIDR: '10.0.4.0/24'
 
 Conditions:
   HasCustomRole: !Not [ !Equals [!Ref 'Role', ''] ]
