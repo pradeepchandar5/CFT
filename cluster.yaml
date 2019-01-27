@@ -204,11 +204,7 @@ Resources:
         - FARGATE
       Cpu: !Ref 'ContainerCpu'
       Memory: !Ref 'ContainerMemory'
-      TaskRoleArn:
-        Fn::If:
-          - 'HasCustomRole'
-          - !Ref 'Role'
-          - !Ref "AWS::NoValue"
+      TaskRoleArn: !Ref "AWS::NoValue"
       ContainerDefinitions:
         - Name: !Ref 'ServiceName'
           Cpu: !Ref 'ContainerCpu'
@@ -272,11 +268,7 @@ Resources:
   ExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: 
-        Fn::If:
-          - 'HasCustomRole'
-          - !Ref 'Role'
-          - !Ref "AWS::NoValue"
+      RoleName: !Ref "AWS::NoValue"
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
