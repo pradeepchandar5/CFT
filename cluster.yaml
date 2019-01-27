@@ -1,3 +1,4 @@
+
 AWSTemplateFormatVersion: '2010-09-09'
 Description: VPC
 
@@ -14,10 +15,6 @@ Mappings:
       CIDR: '10.0.2.0/24'
     PrivateTwo:
       CIDR: '10.0.4.0/24'
-Conditions:
-  HasCustomRole: !Not [ !Equals [!Ref 'Role', ''] ]
-  CreateWithSpot: !Equals [!Ref UseSpot, 'true']
-  CreateWithASG: !Not [!Condition CreateWithSpot]
 
 Parameters:
   VpcId:
@@ -50,7 +47,7 @@ Parameters:
     Description: The name of the namespace. Services are prepended, for example user.service.production
   ClusterName:
     Type: String
-    Default: apitest
+    Default: DemoCluster
   ImageUrl:
     Type: String
     Default: "666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-test:latest"
@@ -195,3 +192,110 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTableTwo
       SubnetId: !Ref PrivateSubnetTwo
+
+  DemoCluster:
+    Type: AWS::ECS::Cluster
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref 'Service'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: !Ref 'ContainerCpu'
+      Memory: !Ref 'ContainerMemory'
+      TaskRoleArn:
+        Fn::If:
+          - 'HasCustomRole'
+          - !Ref 'Role'
+          - !Ref "AWS::NoValue"
+      ContainerDefinitions:
+        - Name: !Ref 'ServiceName'
+          Cpu: !Ref 'ContainerCpu'
+          Memory: !Ref 'ContainerMemory'
+          Image: !Ref 'ImageUrl'
+          PortMappings:
+            - ContainerPort: !Ref 'ContainerPort'
+  ContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Ref ContainerSecurityGroup
+      VpcId: !Ref VPC
+      SecurityGroupIngress: 
+        - IpProtocol: tcp
+          FromPort: !Ref ContainerPort
+          ToPort: !Ref ContainerPort
+
+  Service:
+    Type: AWS::ECS::Service
+    loadBalancers: []
+    ServiceName: apitest
+    Properties:
+      ServiceName: !Ref 'ServiceName'
+      Cluster: !Ref ClusterName
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 75
+      LaunchType: FARGATE
+      DesiredCount: !Ref 'DesiredCount'
+      ServiceRegistries:
+        - RegistryArn: !GetAtt ServiceDiscoveryService.Arn
+          ContainerPort: !Ref 'ContainerPort'
+          ContainerName: !Ref 'ServiceName'
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !Ref 'PrivateSubnetOne'
+            - !Ref 'PrivateSubnetTwo'
+          SecurityGroups:
+            - !Ref ContainerSecurityGroup
+      TaskDefinition: !Ref 'TaskDefinition'
+      ServiceRegistries:
+        - RegistryArn: !GetAtt ServiceDiscoveryService.Arn
+  ServiceDiscoveryService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: !Ref ServiceName
+      DnsConfig:
+        DnsRecords: [{Type: SRV, TTL: "10"}]
+        NamespaceId: !Ref ServiceDiscoveryNamespace
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+  ServiceDiscoveryNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: !Ref Domain
+      VPC: !Ref VPC
+
+
+Resources:
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: 
+        Fn::If:
+          - 'HasCustomRole'
+          - !Ref 'Role'
+          - !Ref "AWS::NoValue"
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: 
+        Fn::If:
+          - 'HasCustomRole'
+          - !Ref 'Role'
+          - !Ref "AWS::NoValue"
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
