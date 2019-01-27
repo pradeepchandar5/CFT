@@ -280,11 +280,7 @@ Resources:
   TaskRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: 
-        Fn::If:
-          - 'HasCustomRole'
-          - !Ref 'Role'
-          - !Ref "AWS::NoValue"
+      RoleName: !Ref "AWS::NoValue"
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
