@@ -1,143 +1,197 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: container cluster on ECS, security groups and cloudwatch
+Description: VPC
+
+Mappings:
+  SubnetConfig:
+    VPC:
+      CIDR: '10.0.0.0/16'
+      VpcId: 'vpc-011b05059b8a16fe8'
+    PublicOne:
+      CIDR: '10.0.1.0/24'
+    PublicTwo:
+      CIDR: '10.0.3.0/24'
+    PrivateOne:
+      CIDR: '10.0.2.0/24'
+    PrivateTwo:
+      CIDR: '10.0.4.0/24'
+Conditions:
+  HasCustomRole: !Not [ !Equals [!Ref 'Role', ''] ]
+  CreateWithSpot: !Equals [!Ref UseSpot, 'true']
+  CreateWithASG: !Not [!Condition CreateWithSpot]
 
 Parameters:
-  EnvironmentName:
-    Description: An environment name that will be prefixed to resource names
+  VpcId:
     Type: String
-    Default: 'api'
-
-  VPC:
-    Type: AWS::EC2::VPC::Id
-    Description: VPC the Application Load Balancer be deployed
-
-  Subnets:
-    Description: subnets the Application Load Balancer be deployed
-    Type: List<AWS::EC2::Subnet::Id>
-
-  SecurityGroup:
-    Description: Security Group to apply to ALB
-    Type: AWS::EC2::SecurityGroup::Id
+    Default: ''
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16'
+  SecurityIngressFromPort:
+    Type: Number
+    Default: '0'
+  SecurityIngressToPort:
+    Type: Number
+    Default: '65535'
+  SecurityIngressCidrIp:
+    Type: String
+    Default: 0.0.0.0/0
+  EcsEndpoint:
+    Type: String
+    Default: ''
+  StackName:
+    Type: String
+    Default: ecsapitest
+  ServiceName:
+    Type: String
+    Default: apitest
+  Domain:
+    Type: String
+    Default: ecs.apitest
+    Description: The name of the namespace. Services are prepended, for example user.service.production
+  ClusterName:
+    Type: String
+    Default: apitest
+  ImageUrl:
+    Type: String
+    Default: "666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-test:latest"
+  ContainerPort:
+    Type: Number
+    Default: 8085
+  ContainerCpu:
+    Type: Number
+    Default: 256
+  ContainerMemory:
+    Type: Number
+    Default: 256
+  DesiredCapacity:
+    Type: Number
+    Default: '1'
+    Description: Number of EC2 instances to launch in your ECS cluster.
+  DesiredCount:
+    Type: Number
+    Default: 1
+  Role:
+    Type: String
+    Default: ""
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues: [t2.micro, t2.small, t2.medium]
+    ConstraintDescription: Please choose a valid instance type.
+  Priority:
+    Type: Number
+    Default: 1
+  Path:
+    Type: String
+    Default: "*"
+  MaxSize:
+    Type: Number
+    Default: '6'
+    Description: Maximum number of EC2 instances that can be launched in your ECS cluster.
+  ECSAMI:
+    Description: AMI ID
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
 
 Resources:
-  LoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+  VPC:
+    Type: AWS::EC2::VPC
     Properties:
-      Name: !Ref EnvironmentName
-      Subnets:
-        - !Ref Subnets
-      SecurityGroups:
-        - !Ref SecurityGroup
-      Tags:
-        - Key: Name
-          Value: !Ref EnvironmentName
-
-  LoadBalancerListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      CidrBlock: !FindInMap ['SubnetConfig', 'VPC', 'CIDR']
+  PublicSubnetOne:
+    Type: AWS::EC2::Subnet
     Properties:
-      LoadBalancerArn: !Ref LoadBalancer
-      Port: 80
-      Protocol: HTTP
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref DefaultTargetGroup
-
-  DefaultTargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+      AvailabilityZone:
+         Fn::Select:
+         - 0
+         - Fn::GetAZs: {Ref: 'AWS::Region'}
+      VpcId: !Ref 'VPC'
+      CidrBlock: !FindInMap ['SubnetConfig', 'PublicOne', 'CIDR']
+      MapPublicIpOnLaunch: true
+  PublicSubnetTwo:
+    Type: AWS::EC2::Subnet
     Properties:
-      Name: !Sub ${EnvironmentName}-default
-      VpcId: !Ref VPC
-      Port: 80
-      Protocol: HTTP
-
-
-  Task:
-    Type: AWS::ECS::TaskDefinition
+      AvailabilityZone:
+         Fn::Select:
+         - 1
+         - Fn::GetAZs: {Ref: 'AWS::Region'}
+      VpcId: !Ref 'VPC'
+      CidrBlock: !FindInMap ['SubnetConfig', 'PublicTwo', 'CIDR']
+      MapPublicIpOnLaunch: true
+  PrivateSubnetOne:
+    Type: AWS::EC2::Subnet
     Properties:
-      Family: apis
-      Cpu: 10
-      Memory: 256
-      NetworkMode: awsvpc
-      RequiresCompatibilities:
-        - FARGATE
-      ExecutionRoleArn: !ImportValue ECSTaskExecutionRole
-      ContainerDefinitions:
-        - Name: apitest
-          Image: 666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-test:latest
-          Cpu: 10
-          Memory: 256
-          PortMappings:
-            - ContainerPort: 8080
-            - hostPort: 8080
-              Protocol: tcp
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-group: '/ecs/apitest'
-              awslogs-region: 'us-west-1'
-              awslogs-stream-prefix: 'ecs'
-
-  Service:
-    Type: AWS::ECS::Service
-    DependsOn: ListenerRule
+      AvailabilityZone:
+         Fn::Select:
+         - 0
+         - Fn::GetAZs: {Ref: 'AWS::Region'}
+      VpcId: !Ref 'VPC'
+      CidrBlock: !FindInMap ['SubnetConfig', 'PrivateOne', 'CIDR']
+  PrivateSubnetTwo:
+    Type: AWS::EC2::Subnet
     Properties:
-      ServiceName: apitest-service
-      TaskDefinition: !Ref Task
-      Cluster: !ImportValue 'apitest'
-      LaunchType: FARGATE
-      DesiredCount: 2
-      DeploymentConfiguration:
-        MaximumPercent: 200
-        MinimumHealthyPercent: 70
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          AssignPublicIp: ENABLED
-          Subnets:
-            - !Ref Subnets
-          SecurityGroups:
-            - !ImportValue ContainerSecurityGroup
-
-  ECSCluster:
-    Type: AWS::ECS::Cluster
+      AvailabilityZone:
+         Fn::Select:
+         - 1
+         - Fn::GetAZs: {Ref: 'AWS::Region'}
+      VpcId: !Ref 'VPC'
+      CidrBlock: !FindInMap ['SubnetConfig', 'PrivateTwo', 'CIDR']
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  GatewayAttachement:
+    Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      ClusterName: 'apitest'
-
-  ContainerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup      
+      VpcId: !Ref 'VPC'
+      InternetGatewayId: !Ref 'InternetGateway'
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
     Properties:
-     VpcId: !ImportValue 'VPC'
-     GroupDescription: for ecs containers
-     SecurityGroupIngress:
-       - SourceSecurityGroupId: - !Ref LoadBalancer
-         IpProtocol: -1
-
-Outputs:
-
-  LoadBalancer:
-    Description: A reference to the Application Load Balancer
-    Value: !Ref LoadBalancer
-
-  LoadBalancerUrl:
-    Description: The URL of the ALB
-    Value: !GetAtt LoadBalancer.DNSName
-
-  Listener:
-    Description: A reference to a port 80 listener
-    Value: !Ref LoadBalancerListener
-
-  ApiEndpoint:
-    Description: apitest endpoint
-    Value: !Join ['', ['http://', !ImportValue DomainName, '/ecs/apitest']]
-    Export:
-      Name: 'BooksApiEndpoint'
-
-  Cluster:
-    Value: !Ref apitest
-    Export:
-      Name: 'apitest'
-
-  ContainerSecurityGroup:
-    Description: container security group
-    Value: !Ref ContainerSecurityGroup
-    Export:
-      Name: 'ContainerSecurityGroup'
+      VpcId: !Ref 'VPC'
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: GatewayAttachement
+    Properties:
+      RouteTableId: !Ref 'PublicRouteTable'
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref 'InternetGateway'
+  PublicSubnetOneRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetOne
+      RouteTableId: !Ref PublicRouteTable
+  PublicSubnetTwoRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetTwo
+      RouteTableId: !Ref PublicRouteTable
+  PrivateRouteTableOne:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref 'VPC'
+  PrivateRouteOne:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableOne
+      DestinationCidrBlock: 0.0.0.0/0
+  PrivateRouteTableOneAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableOne
+      SubnetId: !Ref PrivateSubnetOne
+  PrivateRouteTableTwo:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref 'VPC'
+  PrivateRouteTwo:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableTwo
+      DestinationCidrBlock: 0.0.0.0/0
+  PrivateRouteTableTwoAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableTwo
+      SubnetId: !Ref PrivateSubnetTwo
