@@ -9,7 +9,7 @@ Parameters:
     Type: AWS::EC2::Subnet::Id
   Image:
     Type: String
-    Default: https://s3-us-west-1.amazonaws.com/wm-ui-app/fargatecluster.yaml 
+    Default: 666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-product:latest
   ServiceName:
     Type: String
     Default: DemoService
