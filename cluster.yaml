@@ -1,12 +1,21 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: CloudFormation template for Fargate - Product
+
+Mappings:
+  SubnetConfig:
+    VPC:
+      CIDR: '10.0.0.0/16'
+    PublicOne:
+      CIDR: '10.0.1.0/24'
+    PublicTwo:
+      CIDR: '10.0.3.0/24'
+    PrivateOne:
+      CIDR: '10.0.2.0/24'
+    PrivateTwo:
+      CIDR: '10.0.4.0/24'
+
 Parameters:
-  VPC:
-    Type: AWS::EC2::VPC::Id
-  SubnetA:
-    Type: AWS::EC2::Subnet::Id
-  SubnetB:
-    Type: AWS::EC2::Subnet::Id
+
   Image:
     Type: String
     Default: 666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-product:latest
@@ -35,6 +44,29 @@ Parameters:
     Type: Number
     Default: 10
 Resources:
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      CidrBlock: !FindInMap ['SubnetConfig', 'VPC', 'CIDR']
+  SubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-west-1a
+      VpcId: !Ref 'VPC'
+      CidrBlock: !FindInMap ['SubnetConfig', 'PublicOne', 'CIDR']
+      MapPublicIpOnLaunch: true
+  SubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-west-1a
+      VpcId: !Ref 'VPC'
+      CidrBlock: !FindInMap ['SubnetConfig', 'PublicTwo', 'CIDR']
+      MapPublicIpOnLaunch: true
+
+
   Cluster:
     Type: AWS::ECS::Cluster
     Properties:
