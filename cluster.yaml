@@ -1,219 +1,93 @@
-AWSTemplateFormatVersion: 2010-09-09
-Description: CloudFormation template for Fargate - Product
-
-Mappings:
-  SubnetConfig:
-    VPC:
-      CIDR: '10.0.0.0/16'
-    PublicOne:
-      CIDR: '10.0.1.0/24'
-    PublicTwo:
-      CIDR: '10.0.3.0/24'
-    PrivateOne:
-      CIDR: '10.0.2.0/24'
-    PrivateTwo:
-      CIDR: '10.0.4.0/24'
-
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy a service on AWS Fargate, hosted in a private subnet, behind a private load balancer.
 Parameters:
-
-  Image:
+  EnvironmentName:
     Type: String
-    Default: 666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-product:latest
+    Default: production
+    Description: The name of the environment to add this service to
   ServiceName:
     Type: String
-    Default: DemoService
+    Default: demoservice
+  ImageUrl:
+    Type: String
+    Default: 666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-test:latest
   ContainerPort:
     Type: Number
     Default: 80
-  LoadBalancerPort:
+    Description: What port number the application inside the docker container is binding to
+  ContainerCpu:
     Type: Number
-    Default: 443
-  HealthCheckPath:
-    Type: String
-    Default: /healthcheck
-  HostedZoneName:
-    Type: String
-    Default: company.com
-  Subdomain:
-    Type: String
-    Default: myservice
-  MinContainers:
+    Default: 256
+    Description: How much CPU to give the container. 1024 is 1 CPU
+  ContainerMemory:
     Type: Number
-    Default: 2
-  MaxContainers:
+    Default: 512
+    Description: How much memory in megabytes to give the container
+  DesiredCount:
     Type: Number
-    Default: 10
+    Default: 1
+    Description: How many copies of the service task to run
+  Role:
+    Type: String
+    Default: ""
+
+Conditions:
+  HasCustomRole: !Not [ !Equals [!Ref 'Role', ''] ]
 
 Resources:
-
-  VPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
-      CidrBlock: !FindInMap ['SubnetConfig', 'VPC', 'CIDR']
-  SubnetA:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone: us-west-1a
-      VpcId: !Ref 'VPC'
-      CidrBlock: !FindInMap ['SubnetConfig', 'PublicOne', 'CIDR']
-      MapPublicIpOnLaunch: true
-  SubnetB:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone: us-west-1a
-      VpcId: !Ref 'VPC'
-      CidrBlock: !FindInMap ['SubnetConfig', 'PublicTwo', 'CIDR']
-      MapPublicIpOnLaunch: true
-  Cluster:
-    Type: AWS::ECS::Cluster
-    Properties:
-      ClusterName: !Join ['', [!Ref ServiceName, Cluster]]
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: !Join ['', [!Ref ServiceName, TaskDefinition]]
+      Family: !Ref 'ServiceName'
+      Cpu: !Ref 'ContainerCpu'
+      Memory: !Ref 'ContainerMemory'
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
-      Cpu: 256
-      Memory: 0.5GB
-      ExecutionRoleArn: !Ref ExecutionRole
-      TaskRoleArn: !Ref TaskRole
+      ExecutionRoleArn:
+        Fn::ImportValue: !Sub ${EnvironmentName}:ECSTaskExecutionRole
+      TaskRoleArn:
+        Fn::If:
+          - 'HasCustomRole'
+          - !Ref 'Role'
+          - !Ref "AWS::NoValue"
       ContainerDefinitions:
-        - Name: !Ref ServiceName
-          Image: !Ref Image
+        - Name: !Ref 'ServiceName'
+          Cpu: !Ref 'ContainerCpu'
+          Memory: !Ref 'ContainerMemory'
+          Image: !Ref 'ImageUrl'
           PortMappings:
-            - ContainerPort: !Ref ContainerPort
-  ExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Join ['', [!Ref ServiceName, ExecutionRole]]
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
-  TaskRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Join ['', [!Ref ServiceName, TaskRole]]
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: 'sts:AssumeRole'
-  AutoScalingRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Join ['', [!Ref ServiceName, AutoScalingRole]]
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole'
-  ContainerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: !Join ['', [!Ref ServiceName, ContainerSecurityGroup]]
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: !Ref ContainerPort
-          ToPort: !Ref ContainerPort
-          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
-  LoadBalancerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: !Join ['', [!Ref ServiceName, LoadBalancerSecurityGroup]]
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: !Ref LoadBalancerPort
-          ToPort: !Ref LoadBalancerPort
-          CidrIp: 0.0.0.0/0
+            - ContainerPort: !Ref 'ContainerPort'
+
   Service:
     Type: AWS::ECS::Service
-    DependsOn:
-      - ListenerHTTPS
-    Properties: 
-      ServiceName: !Ref ServiceName
-      Cluster: !Ref Cluster
-      TaskDefinition: !Ref TaskDefinition
-      DeploymentConfiguration:
-        MinimumHealthyPercent: 100
-        MaximumPercent: 200
-      DesiredCount: 1
-      HealthCheckGracePeriodSeconds: 30
+    Properties:
+      ServiceName: !Ref 'ServiceName'
+      Cluster:
+        Fn::ImportValue: !Sub ${EnvironmentName}:ClusterName
       LaunchType: FARGATE
-      NetworkConfiguration: 
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 75
+      DesiredCount: !Ref 'DesiredCount'
+      NetworkConfiguration:
         AwsvpcConfiguration:
-          AssignPublicIp: ENABLED
-          Subnets:
-            - !Ref SubnetA
-            - !Ref SubnetB
           SecurityGroups:
-            - !Ref ContainerSecurityGroup
-      LoadBalancers:
-        - ContainerName: !Ref ServiceName
-          ContainerPort: !Ref ContainerPort
-          TargetGroupArn: !Ref TargetGroup
-  TargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+            - Fn::ImportValue: !Sub ${EnvironmentName}:ContainerSecurityGroup
+          Subnets:
+            - Fn::ImportValue: !Sub ${EnvironmentName}:PrivateSubnetOne
+            - Fn::ImportValue: !Sub ${EnvironmentName}:PrivateSubnetTwo
+      TaskDefinition: !Ref 'TaskDefinition'
+      ServiceRegistries:
+        - RegistryArn: !GetAtt ServiceDiscoveryService.Arn
+
+  ServiceDiscoveryService:
+    Type: AWS::ServiceDiscovery::Service
     Properties:
-      HealthCheckIntervalSeconds: 10
-      HealthCheckPath: !Ref HealthCheckPath
-      HealthCheckTimeoutSeconds: 5
-      UnhealthyThresholdCount: 2
-      HealthyThresholdCount: 2
-      Name: !Join ['', [!Ref ServiceName, TargetGroup]]
-      Port: !Ref ContainerPort
-      Protocol: HTTP
-      TargetGroupAttributes:
-        - Key: deregistration_delay.timeout_seconds
-          Value: 60
-      TargetType: ip
-      VpcId: !Ref VPC
-  ListenerHTTPS:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      DefaultActions:
-        - TargetGroupArn: !Ref TargetGroup
-          Type: forward
-      LoadBalancerArn: !Ref LoadBalancer
-      Port: !Ref LoadBalancerPort
-      Protocol: HTTPS
-  LoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      LoadBalancerAttributes:
-        - Key: idle_timeout.timeout_seconds
-          Value: 60
-      Name: !Join ['', [!Ref ServiceName, LoadBalancer]]
-      Scheme: internet-facing
-      SecurityGroups:
-        - !Ref LoadBalancerSecurityGroup
-      Subnets:
-        - !Ref SubnetA
-        - !Ref SubnetB
-  DNSRecord:
-    Type: AWS::Route53::RecordSet
-    Properties:
-      HostedZoneName: !Join ['', [!Ref HostedZoneName, .]]
-      Name: !Join ['', [!Ref Subdomain, ., !Ref HostedZoneName, .]]
-      Type: A
-      AliasTarget:
-        DNSName: !GetAtt LoadBalancer.DNSName
-        HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
-Outputs:
-  Endpoint:
-    Description: Endpoint
-    Value: !Join ['', ['https://', !Ref DNSRecord]]
+      Name: !Ref ServiceName
+      DnsConfig:
+        DnsRecords: [{Type: A, TTL: "10"}]
+        NamespaceId:
+          Fn::ImportValue: !Sub ${EnvironmentName}:PrivateServiceDiscoveryNamespace
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
