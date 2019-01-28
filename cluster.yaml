@@ -111,7 +111,6 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: 'sts:AssumeRole'
-      TaskRoleArn: !Ref "AWS::NoValue"
 
   ContainerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
