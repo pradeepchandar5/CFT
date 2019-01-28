@@ -3,8 +3,7 @@ Description: AWS Fargate cluster
 Parameters:
   EnvironmentName:
     Type: String
-    Default: production
-    Description: "A friendly environment name that will be used for namespacing all cluster resources. Example: staging, qa, or production"
+    Default: demo
 Mappings:
   SubnetConfig:
     VPC:
