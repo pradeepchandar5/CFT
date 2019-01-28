@@ -43,9 +43,6 @@ Parameters:
   MaxContainers:
     Type: Number
     Default: 10
-  Role:
-    Type: String
-    Default: ""
 
 Resources:
 
@@ -83,9 +80,9 @@ Resources:
       RequiresCompatibilities:
         - FARGATE
       Cpu: 256
-      Memory: 256
+      Memory: 0.5GB
       ExecutionRoleArn: !Ref ExecutionRole
-      TaskRoleArn: !Ref "AWS::NoValue"
+      TaskRoleArn: !Ref TaskRole
       ContainerDefinitions:
         - Name: !Ref ServiceName
           Image: !Ref Image
@@ -103,6 +100,7 @@ Resources:
   TaskRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Join ['', [!Ref ServiceName, TaskRole]]
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
