@@ -43,6 +43,10 @@ Parameters:
   MaxContainers:
     Type: Number
     Default: 10
+  Role:
+    Type: String
+    Default: ""
+
 Resources:
 
   VPC:
@@ -81,7 +85,7 @@ Resources:
       Cpu: 256
       Memory: 256
       ExecutionRoleArn: !Ref ExecutionRole
-      TaskRoleArn: !Ref TaskRole
+      TaskRoleArn: !Ref "AWS::NoValue"
       ContainerDefinitions:
         - Name: !Ref ServiceName
           Image: !Ref Image
@@ -90,37 +94,23 @@ Resources:
   ExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Join ['', [!Ref ServiceName, ExecutionRole]]
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
   TaskRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Join ['', [!Ref ServiceName, TaskRole]]
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: 'sts:AssumeRole'
-  AutoScalingRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Join ['', [!Ref ServiceName, AutoScalingRole]]
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole'
+      TaskRoleArn: !Ref "AWS::NoValue"
+
   ContainerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -214,21 +204,6 @@ Resources:
       AliasTarget:
         DNSName: !GetAtt LoadBalancer.DNSName
         HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
-  AutoScalingTarget:
-    Type: AWS::ApplicationAutoScaling::ScalableTarget
-    Properties:
-      MinCapacity: !Ref MinContainers
-      MaxCapacity: !Ref MaxContainers
-      ResourceId: !Join ['/', [service, !Ref Cluster, !GetAtt Service.Name]]
-      ScalableDimension: ecs:service:DesiredCount
-      ServiceNamespace: ecs
-      RoleARN: !GetAtt AutoScalingRole.Arn
-  AutoScalingPolicy:
-    Type: AWS::ApplicationAutoScaling::ScalingPolicy
-    Properties:
-      PolicyName: !Join ['', [!Ref ServiceName, AutoScalingPolicy]]
-      PolicyType: TargetTrackingScaling
-      ScalingTargetId: !Ref AutoScalingTarget
 Outputs:
   Endpoint:
     Description: Endpoint
