@@ -3,8 +3,7 @@ Description: Deploy a service on AWS Fargate, hosted in a private subnet, behind
 Parameters:
   EnvironmentName:
     Type: String
-    Default: production
-    Description: The name of the environment to add this service to
+    Default: demo
   ServiceName:
     Type: String
     Default: demoservice
