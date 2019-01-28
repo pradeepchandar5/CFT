@@ -32,3 +32,4 @@ Outputs:
     Value: !Ref ServiceDiscoveryNamespace
     Export:
       Name: !Sub ${EnvironmentName}:PrivateServiceDiscoveryNamespace
+
