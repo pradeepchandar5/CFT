@@ -42,7 +42,7 @@ Resources:
         Type: AWS::ECS::Service
         DependsOn: ListenerRule
         Properties: 
-            Cluster: !Ref Cluster
+            Cluster: !ImportValue Cluster
             DeploymentConfiguration:
                 MaximumPercent: 200
                 MinimumHealthyPercent: 75
@@ -71,7 +71,7 @@ Resources:
             NetworkMode: awsvpc
             RequiresCompatibilities:
               - FARGATE
-            ExecutionRoleArn: !Ref ECSTaskExecutionRole
+            ExecutionRoleArn: !ImportValue ECSTaskExecutionRole
             ContainerDefinitions:
                 - Name: product-service
                   Essential: true
@@ -97,7 +97,7 @@ Resources:
     TargetGroup:
         Type: AWS::ElasticLoadBalancingV2::TargetGroup
         Properties:
-            VpcId: !Ref VPC
+            VpcId: !ImportValue VPC
             Port: 80
             Protocol: HTTP
             TargetType: ip
@@ -112,7 +112,7 @@ Resources:
     ListenerRule:
         Type: AWS::ElasticLoadBalancingV2::ListenerRule
         Properties:
-            ListenerArn: !Ref Listener
+            ListenerArn: !ImportValue Listener
             Priority: 2
             Conditions:
                 - Field: path-pattern
