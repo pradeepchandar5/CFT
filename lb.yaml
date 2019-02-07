@@ -5,6 +5,7 @@ Parameters:
 
     EnvironmentName:
         Type: String
+        Default: "Env"
 
     SecurityGroup:
         Type: AWS::EC2::SecurityGroup::Id
@@ -51,9 +52,15 @@ Outputs:
 
     Listener:
         Value: !Ref LoadBalancerListener  
+        Export:
+          Name: 'Listener'
 
     LoadBalancer:
         Value: !Ref LoadBalancer
+        Export:
+          Name: 'LoadBalancer'
 
     LoadBalancerUrl:
         Value: !GetAtt LoadBalancer.DNSName
+        Export:
+          Name: 'LoadBalancerUrl'
