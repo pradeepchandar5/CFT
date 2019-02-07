@@ -4,6 +4,7 @@ Parameters:
 
     EnvironmentName:
         Type: String
+        Default: "Env"
 
     VPC:
         Type: AWS::EC2::VPC::Id
@@ -44,6 +45,10 @@ Outputs:
 
     Cluster:
         Value: !Ref ECSCluster
+        Export:
+          Name: 'ECSCluster'
 
     ECSTaskExecutionRole:
         Value: !GetAtt ECSTaskExecutionRole.Arn
+        Export:
+          Name: 'ECSTaskExecutionRole'
