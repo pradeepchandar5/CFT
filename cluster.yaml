@@ -1,92 +1,49 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: Deploy a service on AWS Fargate, hosted in a private subnet, behind a private load balancer.
+Description: >
+     ECS cluster and ECS Task Execution IAM Role
 Parameters:
-  EnvironmentName:
-    Type: String
-    Default: demo
-  ServiceName:
-    Type: String
-    Default: demoservice
-  ImageUrl:
-    Type: String
-    Default: 666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-test:latest
-  ContainerPort:
-    Type: Number
-    Default: 80
-    Description: What port number the application inside the docker container is binding to
-  ContainerCpu:
-    Type: Number
-    Default: 256
-    Description: How much CPU to give the container. 1024 is 1 CPU
-  ContainerMemory:
-    Type: Number
-    Default: 512
-    Description: How much memory in megabytes to give the container
-  DesiredCount:
-    Type: Number
-    Default: 1
-    Description: How many copies of the service task to run
-  Role:
-    Type: String
-    Default: ""
 
-Conditions:
-  HasCustomRole: !Not [ !Equals [!Ref 'Role', ''] ]
+    EnvironmentName:
+        Type: String
+
+    VPC:
+        Type: AWS::EC2::VPC::Id
 
 Resources:
-  TaskDefinition:
-    Type: AWS::ECS::TaskDefinition
-    Properties:
-      Family: !Ref 'ServiceName'
-      Cpu: !Ref 'ContainerCpu'
-      Memory: !Ref 'ContainerMemory'
-      NetworkMode: awsvpc
-      RequiresCompatibilities:
-        - FARGATE
-      ExecutionRoleArn:
-        Fn::ImportValue: !Sub ${EnvironmentName}:ECSTaskExecutionRole
-      TaskRoleArn:
-        Fn::If:
-          - 'HasCustomRole'
-          - !Ref 'Role'
-          - !Ref "AWS::NoValue"
-      ContainerDefinitions:
-        - Name: !Ref 'ServiceName'
-          Cpu: !Ref 'ContainerCpu'
-          Memory: !Ref 'ContainerMemory'
-          Image: !Ref 'ImageUrl'
-          PortMappings:
-            - ContainerPort: !Ref 'ContainerPort'
 
-  Service:
-    Type: AWS::ECS::Service
-    Properties:
-      ServiceName: !Ref 'ServiceName'
-      Cluster:
-        Fn::ImportValue: !Sub ${EnvironmentName}:ClusterName
-      LaunchType: FARGATE
-      DeploymentConfiguration:
-        MaximumPercent: 200
-        MinimumHealthyPercent: 75
-      DesiredCount: !Ref 'DesiredCount'
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          SecurityGroups:
-            - Fn::ImportValue: !Sub ${EnvironmentName}:ContainerSecurityGroup
-          Subnets:
-            - Fn::ImportValue: !Sub ${EnvironmentName}:PrivateSubnetOne
-            - Fn::ImportValue: !Sub ${EnvironmentName}:PrivateSubnetTwo
-      TaskDefinition: !Ref 'TaskDefinition'
-      ServiceRegistries:
-        - RegistryArn: !GetAtt ServiceDiscoveryService.Arn
+    ECSCluster:
+        Type: AWS::ECS::Cluster
+        Properties:
+            ClusterName: !Ref EnvironmentName
 
-  ServiceDiscoveryService:
-    Type: AWS::ServiceDiscovery::Service
-    Properties:
-      Name: !Ref ServiceName
-      DnsConfig:
-        DnsRecords: [{Type: A, TTL: "10"}]
-        NamespaceId:
-          Fn::ImportValue: !Sub ${EnvironmentName}:PrivateServiceDiscoveryNamespace
-      HealthCheckCustomConfig:
-        FailureThreshold: 1
+    ECSTaskExecutionRole:
+        Type: AWS::IAM::Role
+        Properties:
+            AssumeRolePolicyDocument:
+                Statement:
+                - Effect: Allow
+                  Principal:
+                    Service: [ecs-tasks.amazonaws.com]
+                  Action: ['sts:AssumeRole']
+            Path: /
+            Policies:
+                - PolicyName: AmazonECSTaskExecutionRolePolicy
+                  PolicyDocument:
+                    Statement:
+                    - Effect: Allow
+                      Action:
+                        - 'ecr:GetAuthorizationToken'
+                        - 'ecr:BatchCheckLayerAvailability'
+                        - 'ecr:GetDownloadUrlForLayer'
+                        - 'ecr:BatchGetImage'
+
+                        - 'logs:CreateLogStream'
+                        - 'logs:PutLogEvents'
+                      Resource: '*'
+
+Outputs:
+
+    Cluster:
+        Value: !Ref ECSCluster
+
+    ECSTaskExecutionRole:
+        Value: !GetAtt ECSTaskExecutionRole.Arn
