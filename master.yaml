@@ -54,7 +54,7 @@ Resources:
                 Path: /product
                 SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
                 Subnets: !GetAtt VPC.Outputs.PrivateSubnets
-                TaskCpu: 512
+                TaskCpu: 256
                 TaskMemory: 512
                 VPC: !GetAtt VPC.Outputs.VPC
 
@@ -70,7 +70,7 @@ Resources:
                 Path: /content
                 SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
                 Subnets: !GetAtt VPC.Outputs.PrivateSubnets
-                TaskCpu: 512
+                TaskCpu: 256
                 TaskMemory: 512
                 VPC: !GetAtt VPC.Outputs.VPC
 
