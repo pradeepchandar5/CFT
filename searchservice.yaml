@@ -53,14 +53,14 @@ Resources:
                       - !Select [ 1, !Ref Subnets ]
             TaskDefinition: !Ref TaskDefinition
             LoadBalancers: 
-                - ContainerName: "categoryservice"
+                - ContainerName: "searchservice"
                   ContainerPort: 8003
                   TargetGroupArn: !Ref TargetGroup
 
     TaskDefinition:
         Type: AWS::ECS::TaskDefinition
         Properties:
-            Family: categoryservice
+            Family: searchservice
             Cpu: !Ref 'TaskCpu'
             Memory: !Ref 'TaskMemory'
             NetworkMode: awsvpc
@@ -68,7 +68,7 @@ Resources:
               - FARGATE
             ExecutionRoleArn: !Ref ECSTaskExecutionRole
             ContainerDefinitions:
-                - Name: product-service
+                - Name: searchservice
                   Essential: true
                   Image: 666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-category:latest
                   Cpu: 256
