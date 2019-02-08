@@ -5,7 +5,6 @@ Parameters:
 
     EnvironmentName:
         Type: String
-        Default: "Env"
 
     SecurityGroup:
         Type: AWS::EC2::SecurityGroup::Id
