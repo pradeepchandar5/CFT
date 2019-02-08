@@ -71,9 +71,8 @@ Resources:
                 - Name: productservice
                   Essential: true
                   Image: 666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-product:latest
-                  Cpu: 256
+                  Cpu: 512
                   Memory: 512
-                  MemoryReservation: 256
                   PortMappings:
                     - ContainerPort: 8001
                   LogConfiguration:
