@@ -68,7 +68,7 @@ Resources:
               - FARGATE
             ExecutionRoleArn: !Ref ECSTaskExecutionRole
             ContainerDefinitions:
-                - Name: product-service
+                - Name: categoryservice
                   Essential: true
                   Image: 666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-category:latest
                   Cpu: 256
