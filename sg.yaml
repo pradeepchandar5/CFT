@@ -4,7 +4,6 @@ Parameters:
     
     EnvironmentName:
         Type: String
-        Default: "Env"
     
     VPC:
         Type: AWS::EC2::VPC::Id
@@ -14,7 +13,7 @@ Resources:
     ECSHostSecurityGroup:
         Type: AWS::EC2::SecurityGroup
         Properties: 
-            VpcId: !ImportValue VPC
+            VpcId: !Ref VPC
             GroupDescription: Access to tasks/containers that run on ECS cluster
             SecurityGroupIngress:
                 - SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup 
@@ -26,7 +25,7 @@ Resources:
     LoadBalancerSecurityGroup:
         Type: AWS::EC2::SecurityGroup
         Properties: 
-            VpcId: !ImportValue VPC
+            VpcId: !Ref VPC
             GroupDescription: Access to the load balancer in front of  ECS cluster
             SecurityGroupIngress:
                 - CidrIp: 0.0.0.0/0
