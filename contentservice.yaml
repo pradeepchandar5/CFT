@@ -71,9 +71,8 @@ Resources:
                 - Name: contentservice
                   Essential: true
                   Image: 666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-content:latest
-                  Cpu: 256
+                  Cpu: 512
                   Memory: 512
-                  MemoryReservation: 256
                   PortMappings:
                     - ContainerPort: 8002
                   LogConfiguration:
@@ -82,7 +81,7 @@ Resources:
                         awslogs-group: '/ecs/apicontent'
                         awslogs-region: 'us-west-1'
                         awslogs-stream-prefix: 'ecs'
-    
+
     CloudWatchLogsGroup:
         Type: AWS::Logs::LogGroup
         Properties: 
