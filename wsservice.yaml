@@ -22,6 +22,12 @@ Parameters:
 
     ProductServiceUrl:
         Type: String
+    ContentServiceUrl:
+        Type: String
+    CategoryServiceUrl:
+        Type: String
+    SearchServiceUrl:
+        Type: String
 
     SecurityGroup:
         Type: AWS::EC2::SecurityGroup::Id
@@ -63,7 +69,7 @@ Resources:
             TaskDefinition: !Ref TaskDefinition
             LoadBalancers: 
                 - ContainerName: "website"
-                  ContainerPort: 8000
+                  ContainerPort: 80
                   TargetGroupArn: !Ref TargetGroup
 
     TaskDefinition:
@@ -86,8 +92,14 @@ Resources:
                   Environment: 
                     - Name: PRODUCT_SERVICE_URL
                       Value: !Ref ProductServiceUrl
+                    - Name: CONTENT_SERVICE_URL
+                      Value: !Ref ContentServiceUrl
+                    - Name: CATEGORY_SERVICE_URL
+                      Value: !Ref CategoryServiceUrl
+                    - Name: SEARCH_SERVICE_URL
+                      Value: !Ref SearchServiceUrl
                   PortMappings:
-                    - ContainerPort: 8000
+                    - ContainerPort: 80
 
     CloudWatchLogsGroup:
         Type: AWS::Logs::LogGroup
@@ -98,7 +110,7 @@ Resources:
     TargetGroup:
         Type: AWS::ElasticLoadBalancingV2::TargetGroup
         Properties:
-            VpcId: !ImportValue VPC
+            VpcId: !Ref VPC
             Port: 80
             Protocol: HTTP
             TargetType: ip
