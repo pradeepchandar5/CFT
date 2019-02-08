@@ -45,7 +45,7 @@ Resources:
     ProductService:
         Type: AWS::CloudFormation::Stack
         Properties:
-            TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/service.yaml
+            TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/productservice.yaml
             Parameters:
                 Cluster: !GetAtt ECS.Outputs.Cluster
                 DesiredCount: 2
