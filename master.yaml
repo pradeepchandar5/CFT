@@ -80,10 +80,10 @@ Resources:
     #         TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/categoryservice.yaml
     #         Parameters:
     #             Cluster: !GetAtt ECS.Outputs.Cluster
-    #             DesiredCount: 2
+    #             DesiredCount: 1
     #             ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
     #             Listener: !GetAtt ALB.Outputs.Listener 
-    #             Path: /category
+    #             Path: /categories
     #             SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
     #             Subnets: !GetAtt VPC.Outputs.PrivateSubnets
     #             TaskCpu: 256
@@ -96,7 +96,7 @@ Resources:
     #         TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/searchservice.yaml
     #         Parameters:
     #             Cluster: !GetAtt ECS.Outputs.Cluster
-    #             DesiredCount: 2
+    #             DesiredCount: 1
     #             ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
     #             Listener: !GetAtt ALB.Outputs.Listener 
     #             Path: /search
@@ -112,7 +112,7 @@ Resources:
     #         TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/websiteservice.yaml
     #         Parameters:
     #             Cluster: !GetAtt ECS.Outputs.Cluster
-    #             DesiredCount: 2
+    #             DesiredCount: 1
     #             ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
     #             Listener: !GetAtt ALB.Outputs.Listener 
     #             Path: /
