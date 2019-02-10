@@ -79,7 +79,7 @@ Resources:
                   LogConfiguration:
                     LogDriver: awslogs
                     Options:
-                        awslogs-group: '/ecs/apicategory'
+                        awslogs-group: '/ecs/categories'
                         awslogs-region: 'us-west-1'
                         awslogs-stream-prefix: 'ecs'
     
@@ -99,7 +99,7 @@ Resources:
             Matcher: 
                 HttpCode: 200-299
             HealthCheckIntervalSeconds: 10
-            HealthCheckPath: /category
+            HealthCheckPath: /categories
             HealthCheckProtocol: HTTP
             HealthCheckTimeoutSeconds: 5
             HealthyThresholdCount: 2

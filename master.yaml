@@ -3,6 +3,26 @@ Description: >
     Gateways, deploys an ECS cluster distributed across multiple AZ and ECS services from ECR
     Last Modified: 8th February 2019
     Author: Pradeep T <pradeep.t@infosys.com>
+
+Parameters:
+
+    # HostedZoneName:
+    #     Type: String
+    # #     Default: company.com
+    # Subdomain:
+    #     Type: String
+    # #     Default: myservice
+    # MinContainers:
+    #     Type: Number
+    #     Default: 1
+    # MaxContainers:
+    #     Type: Number
+    #     Default: 2
+    # AutoScalingTargetValue:
+    #     Type: Number
+    #     Default: 50
+
+
 Resources:
     VPC:
         Type: AWS::CloudFormation::Stack
@@ -42,6 +62,16 @@ Resources:
                 EnvironmentName: !Ref AWS::StackName
                 VPC: !GetAtt VPC.Outputs.VPC
 
+    # DNSRecord:
+    #     Type: AWS::Route53::RecordSet
+    #     Properties:
+    #         HostedZoneName: !Join ['', [!Ref HostedZoneName, .]]
+    #         Name: !Join ['', [!Ref Subdomain, ., !Ref HostedZoneName, .]]
+    #         Type: A
+    #         AliasTarget:
+    #             DNSName: !GetAtt LoadBalancer.DNSName
+    #             HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
+
     ProductService:
         Type: AWS::CloudFormation::Stack
         Properties:
@@ -74,57 +104,95 @@ Resources:
                 TaskMemory: 512
                 VPC: !GetAtt VPC.Outputs.VPC
 
-    # CategoryService:
-    #     Type: AWS::CloudFormation::Stack
-    #     Properties:
-    #         TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/categoryservice.yaml
-    #         Parameters:
-    #             Cluster: !GetAtt ECS.Outputs.Cluster
-    #             DesiredCount: 1
-    #             ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
-    #             Listener: !GetAtt ALB.Outputs.Listener 
-    #             Path: /categories
-    #             SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
-    #             Subnets: !GetAtt VPC.Outputs.PrivateSubnets
-    #             TaskCpu: 256
-    #             TaskMemory: 512
-    #             VPC: !GetAtt VPC.Outputs.VPC
+    CategoryService:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/categoryservice.yaml
+            Parameters:
+                Cluster: !GetAtt ECS.Outputs.Cluster
+                DesiredCount: 1
+                ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
+                Listener: !GetAtt ALB.Outputs.Listener 
+                Path: /categories
+                SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
+                Subnets: !GetAtt VPC.Outputs.PrivateSubnets
+                TaskCpu: 256
+                TaskMemory: 512
+                VPC: !GetAtt VPC.Outputs.VPC
 
-    # SearchService:
-    #     Type: AWS::CloudFormation::Stack
-    #     Properties:
-    #         TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/searchservice.yaml
-    #         Parameters:
-    #             Cluster: !GetAtt ECS.Outputs.Cluster
-    #             DesiredCount: 1
-    #             ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
-    #             Listener: !GetAtt ALB.Outputs.Listener 
-    #             Path: /search
-    #             SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
-    #             Subnets: !GetAtt VPC.Outputs.PrivateSubnets
-    #             TaskCpu: 256
-    #             TaskMemory: 512
-    #             VPC: !GetAtt VPC.Outputs.VPC
+    SearchService:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/searchservice.yaml
+            Parameters:
+                Cluster: !GetAtt ECS.Outputs.Cluster
+                DesiredCount: 1
+                ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
+                Listener: !GetAtt ALB.Outputs.Listener 
+                Path: /search
+                SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
+                Subnets: !GetAtt VPC.Outputs.PrivateSubnets
+                TaskCpu: 256
+                TaskMemory: 512
+                VPC: !GetAtt VPC.Outputs.VPC
 
-    # WebsiteService:
-    #     Type: AWS::CloudFormation::Stack
-    #     Properties:
-    #         TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/websiteservice.yaml
-    #         Parameters:
-    #             Cluster: !GetAtt ECS.Outputs.Cluster
-    #             DesiredCount: 1
-    #             ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
-    #             Listener: !GetAtt ALB.Outputs.Listener 
-    #             Path: /
-    #             ProductServiceUrl: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "product" ]]
-    #             ContentServiceUrl: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "content" ]]
-    #             CategoryServiceUrl: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "category" ]]
-    #             SearchServiceUrl: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "search" ]]
-    #             SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
-    #             Subnets: !GetAtt VPC.Outputs.PrivateSubnets
-    #             TaskCpu: 256
-    #             TaskMemory: 512
-    #             VPC: !GetAtt VPC.Outputs.VPC
+    WebsiteService:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/websiteservice.yaml
+            Parameters:
+                Cluster: !GetAtt ECS.Outputs.Cluster
+                DesiredCount: 1
+                ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
+                Listener: !GetAtt ALB.Outputs.Listener 
+                Path: /
+                ProductServiceUrl: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "product" ]]
+                ContentServiceUrl: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "content" ]]
+                CategoryServiceUrl: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "categories" ]]
+                SearchServiceUrl: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "search" ]]
+                SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
+                Subnets: !GetAtt VPC.Outputs.PrivateSubnets
+                TaskCpu: 256
+                TaskMemory: 512
+                VPC: !GetAtt VPC.Outputs.VPC
+
+  #     AutoScalingRole:
+  #       Type: AWS::IAM::Role
+  #       Properties:
+  #         RoleName: !Join ['', [!Ref EnvironmentName, AutoScalingRole]]
+  #         AssumeRolePolicyDocument:
+  #           Statement:
+  #             - Effect: Allow
+  #               Principal:
+  #                 Service: ecs-tasks.amazonaws.com
+  #               Action: 'sts:AssumeRole'
+  #         ManagedPolicyArns:
+  #           - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole'
+
+  # AutoScalingTarget:
+  #   Type: AWS::ApplicationAutoScaling::ScalableTarget
+  #   Properties:
+  #     MinCapacity: !Ref MinContainers
+  #     MaxCapacity: !Ref MaxContainers
+  #     ResourceId: !Join ['/', [service, !Ref Cluster, !GetAtt Service.Name]]
+  #     ScalableDimension: ecs:service:DesiredCount
+  #     ServiceNamespace: ecs
+  #     # "The Amazon Resource Name (ARN) of an AWS Identity and Access Management (IAM) role that allows Application Auto Scaling to modify your scalable target."
+  #     RoleARN: !GetAtt AutoScalingRole.Arn
+  # AutoScalingPolicy:
+  #   Type: AWS::ApplicationAutoScaling::ScalingPolicy
+  #   Properties:
+  #     PolicyName: !Join ['', [!Ref ServiceName, AutoScalingPolicy]]
+  #     PolicyType: TargetTrackingScaling
+  #     ScalingTargetId: !Ref AutoScalingTarget
+  #     TargetTrackingScalingPolicyConfiguration:
+  #       PredefinedMetricSpecification:
+  #         PredefinedMetricType: ECSServiceAverageCPUUtilization
+  #       ScaleInCooldown: 10
+  #       ScaleOutCooldown: 10
+  #       # Keep things at or lower than 50% CPU utilization, for example
+  #       TargetValue: !Ref AutoScalingTargetValue
+
 
 Outputs:
 
@@ -136,14 +204,14 @@ Outputs:
         Description: The URL endpoint for the product service
         Value: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "content" ]]
 
-    # CategoryServiceUrl: 
-    #     Description: The URL endpoint for the product service
-    #     Value: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "category" ]]
+    CategoryServiceUrl: 
+        Description: The URL endpoint for the product service
+        Value: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "categories" ]]
 
-    # SearchServiceUrl: 
-    #     Description: The URL endpoint for the product service
-    #     Value: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "search" ]]
+    SearchServiceUrl: 
+        Description: The URL endpoint for the product service
+        Value: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "search" ]]
 
-    # WebsiteServiceUrl: 
-    #     Description: The URL endpoint for the website service
-    #     Value: !Join ["", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "/" ]]
+    WebsiteServiceUrl: 
+        Description: The URL endpoint for the website service
+        Value: !Join ["", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "/" ]]
