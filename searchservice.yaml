@@ -70,7 +70,7 @@ Resources:
             ContainerDefinitions:
                 - Name: searchservice
                   Essential: true
-                  Image: 666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-category:latest
+                  Image: 666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-search:latest
                   Cpu: 256
                   Memory: 512
                   PortMappings:
