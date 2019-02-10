@@ -1,5 +1,5 @@
 Description: >
-    ECS Category service-JSON API of products.
+    ECS Search service-JSON API of products.
 Parameters: 
     Cluster:
         Type: String

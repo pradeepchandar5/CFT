@@ -1,5 +1,5 @@
 Description:
-    ECS service connecting to another ECS service (product)
+    ECS NGINX Proxy service connecting to another ECS service (product)
 
 Parameters: 
 
@@ -8,7 +8,6 @@ Parameters:
 
     DesiredCount: 
         Type: Number
-        Default: 2
 
     ECSTaskExecutionRole:
         Type: String
@@ -17,16 +16,6 @@ Parameters:
         Type: String
 
     Path: 
-        Type: String
-        Default: /
-
-    ProductServiceUrl:
-        Type: String
-    ContentServiceUrl:
-        Type: String
-    CategoryServiceUrl:
-        Type: String
-    SearchServiceUrl:
         Type: String
 
     SecurityGroup:
@@ -88,16 +77,6 @@ Resources:
                   Image: 666303174975.dkr.ecr.us-west-1.amazonaws.com/wm-api-test:latest
                   Cpu: 256
                   Memory: 512
-                  MemoryReservation: 256
-                  Environment: 
-                    - Name: PRODUCT_SERVICE_URL
-                      Value: !Ref ProductServiceUrl
-                    - Name: CONTENT_SERVICE_URL
-                      Value: !Ref ContentServiceUrl
-                    - Name: CATEGORY_SERVICE_URL
-                      Value: !Ref CategoryServiceUrl
-                    - Name: SEARCH_SERVICE_URL
-                      Value: !Ref SearchServiceUrl
                   PortMappings:
                     - ContainerPort: 80
 
