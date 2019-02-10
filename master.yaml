@@ -155,7 +155,7 @@ Resources:
                 TaskCpu: 256
                 TaskMemory: 512
                 VPC: !GetAtt VPC.Outputs.VPC
-cd 
+
   #     AutoScalingRole:
   #       Type: AWS::IAM::Role
   #       Properties:
