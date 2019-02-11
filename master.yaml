@@ -1,9 +1,8 @@
 Description: >
     VPC with public and private subnets across 2 AZ with an Internet Gateway and pair of NAT
     Gateways, deploys an ECS cluster distributed across multiple AZ and ECS services from ECR
-    Last Modified: 10th February 2019
+    Last Modified: 8th February 2019
     Author: Pradeep T <pradeep.t@infosys.com>
-
 Resources:
     VPC:
         Type: AWS::CloudFormation::Stack
@@ -52,7 +51,7 @@ Resources:
                 DesiredCount: 1
                 ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
                 Listener: !GetAtt ALB.Outputs.Listener 
-                Path: /products
+                Path: /product
                 SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
                 Subnets: !GetAtt VPC.Outputs.PrivateSubnets
                 TaskCpu: 256
@@ -75,53 +74,58 @@ Resources:
                 TaskMemory: 512
                 VPC: !GetAtt VPC.Outputs.VPC
 
-    CategoryService:
-        Type: AWS::CloudFormation::Stack
-        Properties:
-            TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/categoryservice.yaml
-            Parameters:
-                Cluster: !GetAtt ECS.Outputs.Cluster
-                DesiredCount: 1
-                ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
-                Listener: !GetAtt ALB.Outputs.Listener 
-                Path: /categories
-                SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
-                Subnets: !GetAtt VPC.Outputs.PrivateSubnets
-                TaskCpu: 256
-                TaskMemory: 512
-                VPC: !GetAtt VPC.Outputs.VPC
+    # CategoryService:
+    #     Type: AWS::CloudFormation::Stack
+    #     Properties:
+    #         TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/categoryservice.yaml
+    #         Parameters:
+    #             Cluster: !GetAtt ECS.Outputs.Cluster
+    #             DesiredCount: 2
+    #             ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
+    #             Listener: !GetAtt ALB.Outputs.Listener 
+    #             Path: /category
+    #             SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
+    #             Subnets: !GetAtt VPC.Outputs.PrivateSubnets
+    #             TaskCpu: 256
+    #             TaskMemory: 512
+    #             VPC: !GetAtt VPC.Outputs.VPC
 
-    SearchService:
-        Type: AWS::CloudFormation::Stack
-        Properties:
-            TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/searchservice.yaml
-            Parameters:
-                Cluster: !GetAtt ECS.Outputs.Cluster
-                DesiredCount: 1
-                ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
-                Listener: !GetAtt ALB.Outputs.Listener 
-                Path: /search
-                SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
-                Subnets: !GetAtt VPC.Outputs.PrivateSubnets
-                TaskCpu: 256
-                TaskMemory: 512
-                VPC: !GetAtt VPC.Outputs.VPC
+    # SearchService:
+    #     Type: AWS::CloudFormation::Stack
+    #     Properties:
+    #         TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/searchservice.yaml
+    #         Parameters:
+    #             Cluster: !GetAtt ECS.Outputs.Cluster
+    #             DesiredCount: 2
+    #             ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
+    #             Listener: !GetAtt ALB.Outputs.Listener 
+    #             Path: /search
+    #             SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
+    #             Subnets: !GetAtt VPC.Outputs.PrivateSubnets
+    #             TaskCpu: 256
+    #             TaskMemory: 512
+    #             VPC: !GetAtt VPC.Outputs.VPC
 
-    WebsiteService:
-        Type: AWS::CloudFormation::Stack
-        Properties:
-            TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/websiteservice.yaml
-            Parameters:
-                Cluster: !GetAtt ECS.Outputs.Cluster
-                DesiredCount: 1
-                ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
-                Listener: !GetAtt ALB.Outputs.Listener 
-                Path: /
-                SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
-                Subnets: !GetAtt VPC.Outputs.PrivateSubnets
-                TaskCpu: 256
-                TaskMemory: 512
-                VPC: !GetAtt VPC.Outputs.VPC
+    # WebsiteService:
+    #     Type: AWS::CloudFormation::Stack
+    #     Properties:
+    #         TemplateURL: https://s3-us-west-1.amazonaws.com/wm-ui-app/CFT/websiteservice.yaml
+    #         Parameters:
+    #             Cluster: !GetAtt ECS.Outputs.Cluster
+    #             DesiredCount: 2
+    #             ECSTaskExecutionRole: !GetAtt ECS.Outputs.ECSTaskExecutionRole
+    #             Listener: !GetAtt ALB.Outputs.Listener 
+    #             Path: /
+    #             ProductServiceUrl: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "product" ]]
+    #             ContentServiceUrl: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "content" ]]
+    #             CategoryServiceUrl: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "category" ]]
+    #             SearchServiceUrl: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "search" ]]
+    #             SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
+    #             Subnets: !GetAtt VPC.Outputs.PrivateSubnets
+    #             TaskCpu: 256
+    #             TaskMemory: 512
+    #             VPC: !GetAtt VPC.Outputs.VPC
+
 Outputs:
 
     ProductServiceUrl: 
@@ -132,14 +136,14 @@ Outputs:
         Description: The URL endpoint for the product service
         Value: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "content" ]]
 
-    CategoryServiceUrl: 
-        Description: The URL endpoint for the product service
-        Value: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "categories" ]]
+    # CategoryServiceUrl: 
+    #     Description: The URL endpoint for the product service
+    #     Value: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "category" ]]
 
-    SearchServiceUrl: 
-        Description: The URL endpoint for the product service
-        Value: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "search" ]]
+    # SearchServiceUrl: 
+    #     Description: The URL endpoint for the product service
+    #     Value: !Join [ "/", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "search" ]]
 
-    WebsiteServiceUrl: 
-        Description: The URL endpoint for the website service
-        Value: !Join ["", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "/" ]]
+    # WebsiteServiceUrl: 
+    #     Description: The URL endpoint for the website service
+    #     Value: !Join ["", [ !GetAtt ALB.Outputs.LoadBalancerUrl, "/" ]]
